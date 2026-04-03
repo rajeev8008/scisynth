@@ -1,0 +1,25 @@
+# SCISYNTH — Cursor rules
+
+## Retriever interface contract (most important)
+
+- The only public retrieval API is `Retriever.retrieve(query: str, *, top_k: int = 5) -> list[RetrievedChunk]` defined in `src/scisynth/retrieval/contract.py`.
+- `RetrievedChunk` fields: `id`, `text`, `score`. Do not rename or add fields without updating all implementations and call sites.
+- Obtain retrievers only via `get_retriever()` in `src/scisynth/retrieval/factory.py`. Do not construct `MockRetriever` / `LiveRetriever` in random modules except the factory.
+- Do not invent new methods on retriever types (e.g. no `search()`, `query_index()`, etc.) unless the contract and factory are updated together.
+
+## Mock retriever vs eval
+
+- `RETRIEVER_MODE=mock` returns fixed fixture chunks for development and unit tests.
+- Do not treat mock retrieval as ground truth for benchmarks or quality metrics. Scripts that report eval results must use `RETRIEVER_MODE=live` (once the store exists) or explicitly document mock mode.
+- Startup logs include retriever mode and dataset profile; keep that behavior when adding features.
+
+## Where to put new code (“add a feature”)
+
+- **Ingestion** (`ingestion/`): loading files, parsing, chunking, writing the index. No agent prompts or LLM orchestration here.
+- **Retrieval** (`retrieval/`): query → ranked `RetrievedChunk` list, embeddings/search against the store. No ingestion parsers here.
+- **Agent** (`agent/`): tool use, prompts, combining retrieval with LLM. No raw file ingestion here.
+- **API** (`api/`): HTTP routes and request/response mapping; keep thin—delegate to agent or retrieval as appropriate.
+
+## Dataset paths
+
+- Do not hardcode dataset paths inside retriever or agent modules. Use `Settings` / config / env (e.g. `DATASET_PROFILE` and future path fields).
