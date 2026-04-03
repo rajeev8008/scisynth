@@ -1,2 +1,8 @@
-{"id":"q1","question":"What is the main purpose of long-document question answering in this corpus?"}
-{"id":"q2","question":"How does retrieval quality affect evidence-based scientific answers?"}
+{"id":"q1","question":"What is the main purpose of long-document question answering in this corpus?","rubric_keywords":["long","document","question"]}
+{"id":"q2","question":"How does retrieval quality affect evidence-based scientific answers?","rubric_keywords":["retrieval","evidence"]}
+{"id":"q3","question":"What role does claim verification play in scientific NLP benchmarks?","rubric_keywords":["claim","verification"]}
+{"id":"q4","question":"Summarize how long documents challenge standard QA systems.","rubric_keywords":["long","challenge"]}
+{"id":"q5","question":"Why is multi-step reasoning difficult for models on scientific texts?","rubric_keywords":["reasoning","scientific"]}
+{"id":"q6","question":"How do citations and provenance support trustworthy scientific QA?","rubric_keywords":["citation","trust"]}
+{"id":"q7","question":"What dataset or corpus characteristics most affect retrieval recall?","rubric_keywords":["retrieval","corpus"]}
+{"id":"q8","question":"Contrast extractive and abstractive approaches to scientific summarization.","rubric_keywords":["extractive","summarization"]}

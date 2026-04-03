@@ -27,7 +27,19 @@ def load_arxiv_documents(settings: Settings) -> list[PaperDocument]:
     )
     docs: list[PaperDocument] = []
     for result in client.results(search):
-        docs.append(_map_result_to_document(result, settings.arxiv_topic))
+        doc = _map_result_to_document(result, settings.arxiv_topic)
+        if settings.arxiv_fetch_full_pdf:
+            from scisynth.ingestion.arxiv_single import enrich_paper_with_pdf_text
+
+            try:
+                doc = enrich_paper_with_pdf_text(doc, settings)
+            except Exception as exc:
+                logger.warning(
+                    "Full PDF skipped for %s during ingest: %s",
+                    doc.paper_id,
+                    exc,
+                )
+        docs.append(doc)
     docs.sort(key=lambda item: item.paper_id)
     return docs
 

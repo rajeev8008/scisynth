@@ -1,6 +1,8 @@
 # SCISYNTH
 
-Science-synthesis style RAG project. **Phase 1** provides the repo layout, retrieval contract, mock/live toggle, and a health API.
+**SciSynth** is a research-style Q&A stack: you ask a question, it **retrieves** evidence (from your ingested index or an on-demand arXiv paper), and the **LLM** answers with **citations** to chunk ids and paper titles.
+
+**Multi-hop RAG (default):** the first retrieval pass may not be enough. If evidence looks weak (too few chunks or low scores), the agent runs a **second retrieval** with an **expanded query** built from the top passages of the first hop, then **merges and deduplicates** chunks before answering. Configure with `RAG_*` settings in `.env` (see `config.py`).
 
 ## Setup
 
@@ -13,9 +15,9 @@ python -m venv .venv
 pip install -e ".[dev]"
 ```
 
-(`[dev]` adds `httpx` for FastAPI `TestClient` in tests; use `pip install -e .` if you only run the server.)
+(`[dev]` adds test deps; `pip install -e ".[semantic]"` enables hybrid retrieval; `pip install -e ".[ui]"` adds the Gradio demo.)
 
-Copy `.env.example` to `.env` and adjust if needed.
+Copy `.env.example` to **`.env`** in the **project root** (next to `pyproject.toml`) and add your keys. Settings load from that path **even if you start the app from another folder** — your previous “missing API key” errors were often from the shell’s working directory, not from a missing file.
 
 ## Run
 
@@ -26,9 +28,12 @@ scisynth
 Then open `http://127.0.0.1:8000/health`.
 
 - `RETRIEVER_MODE=mock` — deterministic fixture chunks (default).
-- `RETRIEVER_MODE=live` — **BM25** over `INGESTION_OUTPUT_PATH/DATASET_ID/chunks.jsonl` (run `scisynth ingest` first).
+- `RETRIEVER_MODE=live` — reads `INGESTION_OUTPUT_PATH/DATASET_ID/chunks.jsonl` (run `scisynth ingest` first).
+- `RETRIEVAL_PIPELINE=hybrid` (default: BM25 + embeddings + cross-encoder rerank when `pip install -e ".[semantic]"` is installed; otherwise BM25-only with a warning) or `bm25` for lexical-only.
 
 Try search (live or mock): `http://127.0.0.1:8000/search?q=neural&top_k=5`.
+
+Health: `GET /health` (add `?deep=1` to probe the LLM `/models` endpoint when an API key is set). Responses include `X-Request-ID` for debugging.
 
 ## Ask (Phase 4)
 
@@ -45,11 +50,23 @@ POST /ask
 }
 ```
 
+Optional fields:
+
+- `arxiv_url_or_id` — fetch **one** paper (URL or id). With `ARXIV_FETCH_FULL_PDF=true` (default), the service downloads the PDF and extracts text via **PyMuPDF** (falls back to title+abstract if the PDF fails).
+- `arxiv_discovery` — if `true`, run an arXiv **keyword search** using `question` and answer over the top `ARXIV_DISCOVERY_MAX_RESULTS` hits (also supports full PDF per paper when `ARXIV_DISCOVERY_USE_FULL_PDF=true`). Do not combine with `arxiv_url_or_id`.
+
+**Streaming:** `POST /ask/stream` with the same JSON body returns **SSE** (`text/event-stream`): events `meta` (retrieval hops), `token` (text deltas for indexed mode), `done` (citations + model), or `error`.
+
+**Rate limits:** set `RATE_LIMIT_ENABLED=true` to enforce `API_RATE_LIMIT_PER_MINUTE` per client IP on `/ask` and `/ask/stream` (sliding window).
+
+The Gradio UI offers **Ingested index**, **Single arXiv paper**, or **Search arXiv (discovery)**, optional **streaming** for indexed mode, and shows **retrieval hops** plus **sources** explicitly.
+
 Response includes:
 
 - `answer`
-- `citations` (chunk_id, paper_id, snippet, score)
+- `citations` (chunk_id, paper_id, paper_title, snippet, score)
 - `model`
+- `retrieval_hops_used` (1 or 2 when multi-hop RAG runs a second pass)
 
 Required env for generation:
 
@@ -83,7 +100,8 @@ Config is env-driven via `src/scisynth/config.py`:
 - `INGESTION_OUTPUT_PATH` (default `data/processed`)
 - `INGESTION_RAW_PATH` (optional raw mirrors, e.g. arXiv snapshot)
 - `CHUNK_SIZE`, `CHUNK_OVERLAP`
-- `ARXIV_QUERY`, `ARXIV_MAX_RESULTS`, `ARXIV_TOPIC`, `ARXIV_PERSIST_RAW`
+- `ARXIV_QUERY`, `ARXIV_MAX_RESULTS`, `ARXIV_TOPIC`, `ARXIV_PERSIST_RAW`, `ARXIV_FETCH_FULL_PDF`, `ARXIV_PDF_MAX_BYTES`, `ARXIV_PDF_MAX_EXTRACT_CHARS`
+- Discovery API/UI: `ARXIV_DISCOVERY_MAX_RESULTS`, `ARXIV_DISCOVERY_TOPIC`, `ARXIV_DISCOVERY_USE_FULL_PDF`
 - `HF_PRESET=qasper|scifact_corpus`, `HF_SPLIT`, `HF_MAX_ROWS`, `HF_QASPER_REVISION`, `HF_SCIFACT_PARQUET_GLOB`
 
 Ingestion writes:
@@ -100,7 +118,8 @@ under `INGESTION_OUTPUT_PATH/DATASET_ID/`.
 2. Set `RETRIEVER_MODE=live` and match `INGESTION_OUTPUT_PATH` and `DATASET_ID` to that run.
 3. Use `GET /search?q=...` or call `get_retriever().retrieve(...)` in code.
 
-Live retrieval uses **lexical BM25** (`rank-bm25`) over chunk text; upgrade path later is dense embeddings.
+- **bm25:** lexical BM25 only (`rank-bm25`).
+- **hybrid:** BM25 + sentence embeddings + optional **cross-encoder** rerank (`sentence-transformers`; first run downloads models).
 
 ## Eval (Phase 4 lightweight)
 
@@ -112,11 +131,11 @@ scisynth eval
 
 Inputs:
 
-- `EVAL_QUESTIONS_PATH` JSONL with `id` and `question`
+- `EVAL_QUESTIONS_PATH` JSONL with `id`, `question`, and optional `rubric_keywords` (list of strings for a cheap coverage score)
 
 Outputs:
 
-- timestamped CSV under `EVAL_RESULTS_DIR` (default `eval/results`)
+- timestamped CSV under `EVAL_RESULTS_DIR` (default `eval/results`): `keyword_overlap`, `retrieval_hops_used`, `has_chunk_citation_markers`, `rubric_keyword_coverage`, etc.
 
 Example arXiv ingest:
 
@@ -153,5 +172,20 @@ scisynth ingest --source huggingface --hf-preset scifact_corpus --hf-max-rows 10
 | `src/scisynth/ingestion/` | Corpus → index (Phase 2) |
 | `src/scisynth/agent/` | Orchestration / LLM (Phase 4) |
 | `src/scisynth/api/` | HTTP API |
+
+## Web UI (Gradio)
+
+```bash
+pip install -e ".[ui]"
+scisynth-ui
+```
+
+Opens a browser UI (default `http://127.0.0.1:7860`) that calls the same answering pipeline as `/ask` (plus arXiv discovery and optional streaming).
+
+**Local PDFs:** place `.pdf` files under your corpus folder (e.g. `DATASET_FULL_PATH` with `DATASET_PROFILE=full`); ingestion extracts text with PyMuPDF alongside `.md` / `.txt`.
+
+## CI
+
+GitHub Actions runs `pytest` on push/PR (`.github/workflows/ci.yml`).
 
 See `.cursorrules` for AI/editor conventions.

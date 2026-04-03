@@ -11,6 +11,8 @@ class RetrievedChunk:
     id: str
     text: str
     score: float
+    paper_id: str = ""
+    paper_title: str | None = None
 
 
 @runtime_checkable

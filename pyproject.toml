@@ -14,6 +14,9 @@ dependencies = [
     "pydantic-settings>=2.6",
     "arxiv>=2.1",
     "rank-bm25>=0.2.2",
+    "httpx>=0.27",
+    "numpy>=1.26",
+    "pymupdf>=1.24.0",
 ]
 
 [project.optional-dependencies]
@@ -25,9 +28,17 @@ dev = [
 hf = [
     "datasets>=3.0",
 ]
+semantic = [
+    "sentence-transformers>=3.0",
+    "torch>=2.2",
+]
+ui = [
+    "gradio>=5.0",
+]
 
 [project.scripts]
 scisynth = "scisynth.cli:main"
+scisynth-ui = "scisynth.ui.gradio_app:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -11,11 +11,15 @@ class MockRetriever:
             id="mock:chunk-1",
             text="Fixture passage A (mock retriever).",
             score=0.99,
+            paper_id="mock-paper-a",
+            paper_title="Mock Paper A",
         ),
         RetrievedChunk(
             id="mock:chunk-2",
             text="Fixture passage B (mock retriever).",
             score=0.95,
+            paper_id="mock-paper-b",
+            paper_title="Mock Paper B",
         ),
     )
 

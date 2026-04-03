@@ -6,7 +6,7 @@ from pathlib import Path
 from scisynth.ingestion.schema import PaperDocument
 
 _METADATA_FILE = "metadata.jsonl"
-_SUPPORTED_SUFFIXES = {".md", ".txt"}
+_SUPPORTED_SUFFIXES = {".md", ".txt", ".pdf"}
 
 
 def load_documents(dataset_path: Path) -> list[PaperDocument]:
@@ -24,7 +24,12 @@ def load_documents(dataset_path: Path) -> list[PaperDocument]:
             continue
         paper_id = source_file.stem
         meta = metadata_by_id.get(paper_id, _default_metadata(paper_id))
-        text = source_file.read_text(encoding="utf-8")
+        if source_file.suffix.lower() == ".pdf":
+            from scisynth.ingestion.pdf_extract import text_from_pdf_path
+
+            text = text_from_pdf_path(source_file)
+        else:
+            text = source_file.read_text(encoding="utf-8")
         docs.append(
             PaperDocument(
                 paper_id=paper_id,

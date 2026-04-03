@@ -3,7 +3,7 @@
 ## Retriever interface contract (most important)
 
 - The only public retrieval API is `Retriever.retrieve(query: str, *, top_k: int = 5) -> list[RetrievedChunk]` defined in `src/scisynth/retrieval/contract.py`.
-- `RetrievedChunk` fields: `id`, `text`, `score`. Do not rename or add fields without updating all implementations and call sites.
+- `RetrievedChunk` fields: `id`, `text`, `score`, `paper_id`, `paper_title`. Do not rename or add fields without updating all implementations and call sites.
 - Obtain retrievers only via `get_retriever()` in `src/scisynth/retrieval/factory.py`. Do not construct `MockRetriever` / `LiveRetriever` in random modules except the factory.
 - Do not invent new methods on retriever types (e.g. no `search()`, `query_index()`, etc.) unless the contract and factory are updated together.
 
@@ -17,7 +17,7 @@
 
 - **Ingestion** (`ingestion/`): loading files, parsing, chunking, writing the index. No agent prompts or LLM orchestration here.
 - **Retrieval** (`retrieval/`): query → ranked `RetrievedChunk` list, embeddings/search against the store. No ingestion parsers here.
-- **Agent** (`agent/`): tool use, prompts, combining retrieval with LLM. No raw file ingestion here.
+- **Agent** (`agent/`): tool use, prompts, combining retrieval with LLM. **Multi-hop RAG** (`agent/multihop.py`, `answer_question`): if first-hop evidence is weak, a second `retrieve()` runs with an expanded query; merge chunks before the LLM. No raw file ingestion here.
 - **API** (`api/`): HTTP routes and request/response mapping; keep thin—delegate to agent or retrieval as appropriate.
 
 ## Dataset paths
