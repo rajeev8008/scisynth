@@ -18,6 +18,7 @@ build/
 # Data (large / local corpora)
 data/raw/
 data/processed/
+eval/results/
 
 # IDE / OS
 .idea/

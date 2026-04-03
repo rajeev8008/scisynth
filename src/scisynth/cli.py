@@ -17,8 +17,8 @@ def main() -> None:
         "command",
         nargs="?",
         default="serve",
-        choices=("serve", "ingest"),
-        help="serve API (default) or ingest configured dataset.",
+        choices=("serve", "ingest", "eval"),
+        help="serve API (default), ingest dataset, or run frozen eval.",
     )
     parser.add_argument(
         "--source",
@@ -45,6 +45,9 @@ def main() -> None:
 
     if args.command == "ingest":
         _run_ingestion_command(args)
+        return
+    if args.command == "eval":
+        _run_eval_command()
         return
     _run_serve_command()
 
@@ -106,4 +109,24 @@ def _run_ingestion_command(args: argparse.Namespace) -> None:
         stats.document_count,
         stats.chunk_count,
         stats.output_path,
+    )
+
+
+def _run_eval_command() -> None:
+    """Run frozen phase-4 evaluation and log output file path.
+
+    Args:
+        None.
+    Returns:
+        None.
+    """
+    logging.basicConfig(level=logging.INFO)
+    from scisynth.config import get_settings
+    from scisynth.eval import run_frozen_eval
+
+    summary = run_frozen_eval(get_settings())
+    logging.getLogger(__name__).info(
+        "Eval completed questions=%s output=%s",
+        summary.question_count,
+        summary.output_csv,
     )

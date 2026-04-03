@@ -30,6 +30,36 @@ Then open `http://127.0.0.1:8000/health`.
 
 Try search (live or mock): `http://127.0.0.1:8000/search?q=neural&top_k=5`.
 
+## Ask (Phase 4)
+
+Question answering now runs as: question -> retrieve -> LLM -> cited answer.
+
+Endpoint:
+
+```bash
+POST /ask
+{
+  "question": "What improves synthesis in long documents?",
+  "top_k": 5,
+  "temperature": 0.2
+}
+```
+
+Response includes:
+
+- `answer`
+- `citations` (chunk_id, paper_id, snippet, score)
+- `model`
+
+Required env for generation:
+
+- `LLM_BASE_URL`
+- `LLM_API_KEY` (or `OPENAI_API_KEY`)
+- `LLM_MODEL`
+- `LLM_MAX_OUTPUT_TOKENS`
+
+If retrieval returns no chunks, the system returns: "I do not know based on the available indexed context."
+
 ## Ingest (Phase 2)
 
 Run one command to ingest the configured corpus profile:
@@ -71,6 +101,22 @@ under `INGESTION_OUTPUT_PATH/DATASET_ID/`.
 3. Use `GET /search?q=...` or call `get_retriever().retrieve(...)` in code.
 
 Live retrieval uses **lexical BM25** (`rank-bm25`) over chunk text; upgrade path later is dense embeddings.
+
+## Eval (Phase 4 lightweight)
+
+Run frozen end-to-end eval (uses full answer pipeline, not mock outputs):
+
+```bash
+scisynth eval
+```
+
+Inputs:
+
+- `EVAL_QUESTIONS_PATH` JSONL with `id` and `question`
+
+Outputs:
+
+- timestamped CSV under `EVAL_RESULTS_DIR` (default `eval/results`)
 
 Example arXiv ingest:
 
