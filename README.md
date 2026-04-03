@@ -26,7 +26,9 @@ scisynth
 Then open `http://127.0.0.1:8000/health`.
 
 - `RETRIEVER_MODE=mock` — deterministic fixture chunks (default).
-- `RETRIEVER_MODE=live` — wired in Phase 3 (currently returns no chunks with a log warning).
+- `RETRIEVER_MODE=live` — **BM25** over `INGESTION_OUTPUT_PATH/DATASET_ID/chunks.jsonl` (run `scisynth ingest` first).
+
+Try search (live or mock): `http://127.0.0.1:8000/search?q=neural&top_k=5`.
 
 ## Ingest (Phase 2)
 
@@ -61,6 +63,14 @@ Ingestion writes:
 - `manifest.json`
 
 under `INGESTION_OUTPUT_PATH/DATASET_ID/`.
+
+## Retrieve (Phase 3)
+
+1. Ingest so `chunks.jsonl` exists for your `DATASET_ID` (see above).
+2. Set `RETRIEVER_MODE=live` and match `INGESTION_OUTPUT_PATH` and `DATASET_ID` to that run.
+3. Use `GET /search?q=...` or call `get_retriever().retrieve(...)` in code.
+
+Live retrieval uses **lexical BM25** (`rank-bm25`) over chunk text; upgrade path later is dense embeddings.
 
 Example arXiv ingest:
 

@@ -19,4 +19,4 @@ def get_retriever(settings: Settings | None = None) -> Retriever:
 
     if cfg.retriever_mode == "mock":
         return MockRetriever()
-    return LiveRetriever()
+    return LiveRetriever(settings=cfg)
