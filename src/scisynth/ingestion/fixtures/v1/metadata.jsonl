@@ -1,0 +1,2 @@
+{"paper_id":"paper_qasper_demo","title":"Question Answering over Long Documents","authors":"Dasigi et al.","year":2021,"topic":"machine-reading","abstract":"A benchmark for answering questions over long scientific documents."}
+{"paper_id":"paper_scifact_demo","title":"Scientific Claim Verification with Retrieved Evidence","authors":"Wadden et al.","year":2020,"topic":"fact-verification","abstract":"A dataset and setup for verifying scientific claims with evidence."}
