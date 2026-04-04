@@ -8,8 +8,8 @@
 
 | Mode | What it does |
 |------|-------------|
-| ⚡ **Quick Q&A** | Ask a question → retrieve evidence → get a cited answer |
-| 🔬 **Deep Research** | Enter a research topic → a team of AI agents plans, researches, writes, and reviews a full report |
+| **Quick Q&A** | Ask a question → retrieve evidence → get a cited answer |
+| **Deep Research** | Enter a research topic → a team of AI agents plans, researches, writes, and reviews a full report |
 
 ## Quick Start
 

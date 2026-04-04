@@ -14,12 +14,12 @@ logger = logging.getLogger(__name__)
 
 # ── Node display config ──────────────────────────────────────────────────
 _NODE_META = {
-    "planner": ("📋 Planning", "Breaking topic into research sections..."),
-    "researcher": ("🔍 Researching", "Retrieving evidence from the knowledge base..."),
-    "writer": ("✍️ Writing", "Drafting section from evidence..."),
-    "reviewer": ("🔎 Reviewing", "Evaluating draft quality and citations..."),
-    "advance_section": ("➡️ Next Section", "Moving to the next section..."),
-    "synthesizer": ("🧬 Synthesizing", "Merging sections into a cohesive report..."),
+    "planner": ("Planning", "Breaking topic into research sections..."),
+    "researcher": ("Researching", "Retrieving evidence from the knowledge base..."),
+    "writer": ("Writing", "Drafting section from evidence..."),
+    "reviewer": ("Reviewing", "Evaluating draft quality and citations..."),
+    "advance_section": ("Next Section", "Moving to the next section..."),
+    "synthesizer": ("Synthesizing", "Merging sections into a cohesive report..."),
 }
 
 
@@ -60,7 +60,7 @@ async def on_start():
     reload_settings()
     settings = get_settings()
     key = (settings.llm_api_key or settings.openai_api_key).strip()
-    status = "✅ Connected" if key else "⚠️ No API key"
+    status = "[Connected]" if key else "[No API key]"
 
     await cl.Message(
         content=(
@@ -71,11 +71,11 @@ async def on_start():
             "### How to use:\n\n"
             "| Command | What it does |\n"
             "|---------|-------------|\n"
-            "| Just type a question | ⚡ **Quick Q&A** — retrieve + answer with citations |\n"
-            "| `/research <topic>` | 🔬 **Deep Research (arXiv)** — fetches live papers from arXiv |\n"
-            "| `/research-index <topic>` | 📚 **Deep Research (Index)** — uses ingested papers only |\n"
-            "| `/arxiv <url> <question>` | 📄 **arXiv Q&A** — answer from a specific paper |\n"
-            "| `/discover <question>` | 🌐 **arXiv Discovery** — search + answer from arXiv |\n\n"
+            "| Just type a question | **Quick Q&A** — retrieve + answer with citations |\n"
+            "| `/research <topic>` | **Deep Research (arXiv)** — fetches live papers from arXiv |\n"
+            "| `/research-index <topic>` | **Deep Research (Index)** — uses ingested papers only |\n"
+            "| `/arxiv <url> <question>` | **arXiv Q&A** — answer from a specific paper |\n"
+            "| `/discover <question>` | **arXiv Discovery** — search + answer from arXiv |\n\n"
             "---\n"
             "*Try: `/research How do transformer models improve scientific document QA?`*"
         ),
@@ -110,7 +110,7 @@ async def on_message(message: cl.Message):
 async def _handle_quick_qa(question: str):
     """Run the existing single-question RAG pipeline."""
     settings = get_settings()
-    msg = cl.Message(content="⏳ Retrieving evidence and generating answer...")
+    msg = cl.Message(content="Retrieving evidence and generating answer...")
     await msg.send()
 
     try:
@@ -125,7 +125,7 @@ async def _handle_quick_qa(question: str):
         await msg.update()
     except Exception as exc:
         logger.exception("Quick Q&A failed")
-        msg.content = f"### ❌ Error\n\n`{exc!s}`"
+        msg.content = f"### [ERROR]\n\n`{exc!s}`"
         await msg.update()
 
 
@@ -140,7 +140,7 @@ async def _handle_arxiv(text: str):
 
     arxiv_ref, question = parts[0], parts[1]
     settings = get_settings()
-    msg = cl.Message(content=f"⏳ Fetching arXiv paper `{arxiv_ref}` and answering...")
+    msg = cl.Message(content=f"Fetching arXiv paper `{arxiv_ref}` and answering...")
     await msg.send()
 
     try:
@@ -156,7 +156,7 @@ async def _handle_arxiv(text: str):
         await msg.update()
     except Exception as exc:
         logger.exception("arXiv Q&A failed")
-        msg.content = f"### ❌ Error\n\n`{exc!s}`"
+        msg.content = f"### [ERROR]\n\n`{exc!s}`"
         await msg.update()
 
 
@@ -165,7 +165,7 @@ async def _handle_arxiv(text: str):
 async def _handle_discovery(question: str):
     """Search arXiv and answer from top results."""
     settings = get_settings()
-    msg = cl.Message(content="⏳ Searching arXiv and generating answer...")
+    msg = cl.Message(content="Searching arXiv and generating answer...")
     await msg.send()
 
     try:
@@ -180,7 +180,7 @@ async def _handle_discovery(question: str):
         await msg.update()
     except Exception as exc:
         logger.exception("arXiv Discovery failed")
-        msg.content = f"### ❌ Error\n\n`{exc!s}`"
+        msg.content = f"### [ERROR]\n\n`{exc!s}`"
         await msg.update()
 
 
@@ -191,10 +191,10 @@ async def _handle_deep_research(topic: str, *, source: str = "arxiv"):
     settings = get_settings()
     t0 = time.perf_counter()
 
-    source_label = "🌐 arXiv (live papers)" if source == "arxiv" else "📚 Ingested Index"
+    source_label = "arXiv (live papers)" if source == "arxiv" else "Ingested Index"
     header_msg = cl.Message(
         content=(
-            f"## 🔬 Deep Research: *{topic}*\n\n"
+            f"## Deep Research: *{topic}*\n\n"
             f"**Evidence source:** {source_label}\n\n"
             "Starting multi-agent pipeline...\n\n"
             "Agents: **Planner** → **Researcher** → **Writer** → **Reviewer** ↺ → **Synthesizer**"
@@ -219,7 +219,7 @@ async def _handle_deep_research(topic: str, *, source: str = "arxiv"):
                 events.append((node_name, state_update))
 
         # Progress tracking
-        progress_msg = cl.Message(content="⏳ Working...")
+        progress_msg = cl.Message(content="Working...")
         await progress_msg.send()
 
         # Run the graph in a background thread
@@ -232,7 +232,7 @@ async def _handle_deep_research(topic: str, *, source: str = "arxiv"):
             if len(events) > last_event_count:
                 for i in range(last_event_count, len(events)):
                     node_name, state_data = events[i]
-                    emoji, desc = _NODE_META.get(node_name, ("🔄", node_name))
+                    emoji, desc = _NODE_META.get(node_name, ("", node_name))
 
                     # Build progress detail
                     detail = desc
@@ -256,7 +256,7 @@ async def _handle_deep_research(topic: str, *, source: str = "arxiv"):
                         new_idx = state_data.get("current_section_idx", 0)
                         detail = f"Moving to section {new_idx + 1}"
 
-                    step = cl.Step(name=f"{emoji} {node_name.replace('_', ' ').title()}", type="tool")
+                    step = cl.Step(name=f"{node_name.replace('_', ' ').title()}", type="tool")
                     step.output = detail
                     await step.send()
 
@@ -269,8 +269,8 @@ async def _handle_deep_research(topic: str, *, source: str = "arxiv"):
         if len(events) > last_event_count:
             for i in range(last_event_count, len(events)):
                 node_name, state_data = events[i]
-                emoji, desc = _NODE_META.get(node_name, ("🔄", node_name))
-                step = cl.Step(name=f"{emoji} {node_name.replace('_', ' ').title()}", type="tool")
+                emoji, desc = _NODE_META.get(node_name, ("", node_name))
+                step = cl.Step(name=f"{node_name.replace('_', ' ').title()}", type="tool")
                 step.output = desc
                 await step.send()
 
@@ -289,20 +289,20 @@ async def _handle_deep_research(topic: str, *, source: str = "arxiv"):
                 all_evidence.update(state_data["section_evidence"])
 
         # Update progress message
-        progress_msg.content = f"✅ Research complete in **{elapsed:.1f}s** — {len(outline)} sections processed"
+        progress_msg.content = f"[Done] Research complete in **{elapsed:.1f}s** — {len(outline)} sections processed"
         await progress_msg.update()
 
         if final_report:
             # Send the final report
             report_content = (
-                f"# 📄 Research Report: *{topic}*\n\n"
+                f"# Research Report: *{topic}*\n\n"
                 f"{final_report}\n\n"
                 "---\n\n"
             )
 
             # Add evidence summary
             if all_evidence:
-                report_content += "## 📚 Evidence Sources\n\n"
+                report_content += "## Evidence Sources\n\n"
                 seen_papers = set()
                 for idx_key, chunks in sorted(all_evidence.items()):
                     for c in chunks:
@@ -320,7 +320,7 @@ async def _handle_deep_research(topic: str, *, source: str = "arxiv"):
             await cl.Message(content=report_content).send()
         else:
             await cl.Message(
-                content="⚠️ The research pipeline completed but produced no final report. "
+                content="[WARNING] The research pipeline completed but produced no final report. "
                 "Check that your LLM API key is configured correctly."
             ).send()
 
@@ -328,7 +328,7 @@ async def _handle_deep_research(topic: str, *, source: str = "arxiv"):
         logger.exception("Research module not available")
         await cl.Message(
             content=(
-                "### ❌ Deep Research not available\n\n"
+                "### [ERROR] Deep Research not available\n\n"
                 f"Missing dependency: `{exc.name}`\n\n"
                 "Install with: `pip install -e \".[research]\"`"
             ),
@@ -337,7 +337,7 @@ async def _handle_deep_research(topic: str, *, source: str = "arxiv"):
         logger.exception("Deep research failed")
         elapsed = time.perf_counter() - t0
         await cl.Message(
-            content=f"### ❌ Research Failed\n\n`{exc!s}`\n\n*Elapsed: {elapsed:.1f}s*"
+            content=f"### [ERROR] Research Failed\n\n`{exc!s}`\n\n*Elapsed: {elapsed:.1f}s*"
         ).send()
 
 
