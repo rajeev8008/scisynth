@@ -64,7 +64,7 @@ async def on_start():
 
     await cl.Message(
         content=(
-            "# 🔬 SciSynth\n\n"
+            "# Welcome to SciSynth\n\n"
             "**Multi-Agent Research Assistant** — powered by LangGraph + RAG\n\n"
             f"**LLM:** `{settings.llm_model}` via `{settings.llm_base_url}` — {status}\n\n"
             "---\n\n"

@@ -1,4 +1,4 @@
-# 🔬 Welcome to SciSynth
+# Welcome to SciSynth
 
 > **Multi-Agent Deep Research** — powered by LangGraph + RAG
 
