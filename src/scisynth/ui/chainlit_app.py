@@ -33,7 +33,9 @@ def _format_citations_md(evidence_list: list[dict]) -> str:
         title = c.get("paper_title") or c.get("paper_id", "unknown")
         score = c.get("score", 0.0)
         snippet = c.get("text", "")[:120].replace("\n", " ")
-        lines.append(f"- **[{cid}]** *{title}* · score {score:.2f}\n  > {snippet}...")
+        clean_id = str(cid).strip()
+        clean_title = str(title).strip()
+        lines.append(f"- **[{clean_id}]** *{clean_title}* · score {score:.2f}\n  <br/> _{snippet}..._")
     return "\n".join(lines)
 
 
@@ -41,11 +43,12 @@ def _format_quick_answer(result) -> str:
     """Format an AnswerResult into rich markdown."""
     parts = [f"## Answer\n\n{result.answer}\n"]
     if result.citations:
-        parts.append("\n---\n### 📖 Citations\n")
+        parts.append("\n---\n### Citations\n")
         for c in result.citations:
+            clean_id = str(c.chunk_id).strip()
+            clean_title = str(c.paper_title or c.paper_id).strip()
             parts.append(
-                f"- **[{c.chunk_id}]** *{c.paper_title or c.paper_id}* · "
-                f"score {c.score:.2f}\n  > {c.snippet}"
+                f"- **[{clean_id}]** *{clean_title}* · score {c.score:.2f}\n  <br/> _{c.snippet}_"
             )
     parts.append(
         f"\n---\n*Model: `{result.model}` · Retrieval hops: {result.retrieval_hops_used}*"
