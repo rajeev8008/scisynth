@@ -192,6 +192,18 @@ class Settings(BaseSettings):
         le=1.0,
         description="If mean chunk score is below this, trigger hop 2.",
     )
+    research_max_sections: int = Field(
+        default=5,
+        ge=2,
+        le=8,
+        description="Maximum sections the planner can create for deep research.",
+    )
+    research_max_review_iterations: int = Field(
+        default=2,
+        ge=1,
+        le=5,
+        description="Max reviewer loop iterations per section before force-accept.",
+    )
     eval_questions_path: str = Field(
         default="eval/questions/frozen_questions.jsonl",
         description="Path to frozen evaluation question set.",

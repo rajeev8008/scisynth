@@ -27,8 +27,12 @@ data/raw/
 data/processed/
 eval/results/
 
+# Chainlit auto-generated
+.chainlit/
+
 # IDE / OS
 .idea/
 .vscode/
 .DS_Store
 Thumbs.db
+.files/
