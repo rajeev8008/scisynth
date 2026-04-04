@@ -39,14 +39,10 @@ research = [
 ui = [
     "chainlit>=2.0",
 ]
-gradio = [
-    "gradio>=5.0",
-]
 
 [project.scripts]
 scisynth = "scisynth.cli:main"
 scisynth-ui = "scisynth.ui.chainlit_app:main"
-scisynth-gradio = "scisynth.ui.gradio_app:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
