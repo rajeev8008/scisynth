@@ -234,7 +234,7 @@ def main() -> None:
     with gr.Blocks(title="SCISYNTH", elem_classes=["scisynth-stack"]) as demo:
         gr.Markdown(
             "<div class='scisynth-hero'>"
-            "<h1 style='font-weight:700; letter-spacing:-0.02em; margin-bottom:0.35em;'>SCISYNTH</h1>"
+            "<h1 style='font-weight:700; letter-spacing:-0.02em; margin-bottom:0.35em;'>Welcome to SciSynth</h1>"
             "<p style='opacity:0.88; max-width:42rem; margin:0 auto; line-height:1.55;'>"
             "Grounded Q&amp;A: use your <strong>ingested index</strong>, paste one <strong>arXiv</strong> link, "
             "or <strong>search arXiv</strong> for top papers. PDF text is extracted when configured. "
