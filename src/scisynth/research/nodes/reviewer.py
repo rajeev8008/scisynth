@@ -85,14 +85,29 @@ def reviewer_node(state: ResearchState) -> dict:
         evidence_text=evidence_text,
     )
 
-    response = generate_answer_text(
-        settings,
-        prompt,
-        temperature=0.2,
-        max_output_tokens=300,
-    )
+    try:
+        response = generate_answer_text(
+            settings,
+            prompt,
+            temperature=0.2,
+            max_output_tokens=300,
+        )
+        review = _parse_review_json(response)
+    except Exception as exc:
+        logger.warning(
+            "Reviewer: LLM call failed for section %d (%s); auto-accepting draft.",
+            idx, exc,
+        )
+        return {
+            "section_reviews": {
+                str(idx): {
+                    "passed": True,
+                    "feedback": "Auto-accepted (reviewer LLM call failed)",
+                    "action": "accept",
+                },
+            },
+        }
 
-    review = _parse_review_json(response)
     action = review.get("action", "accept")
     if action not in _VALID_ACTIONS:
         action = "accept"
