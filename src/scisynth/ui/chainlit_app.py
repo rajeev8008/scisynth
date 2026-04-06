@@ -227,7 +227,8 @@ async def _handle_deep_research(topic: str, *, source: str = "arxiv"):
                 events.append((node_name, state_update))
 
         # Progress tracking
-        progress_msg = cl.Message(content="Working...")
+        progress_msg = cl.Step(name="Deep Research Progress", type="run")
+        progress_msg.output = "Working..."
         await progress_msg.send()
 
         # Run the graph in a background thread
@@ -264,7 +265,7 @@ async def _handle_deep_research(topic: str, *, source: str = "arxiv"):
                         new_idx = state_data.get("current_section_idx", 0)
                         detail = f"Moving to section {new_idx + 1}"
 
-                    step = cl.Step(name=f"{node_name.replace('_', ' ').title()}", type="tool")
+                    step = cl.Step(name=f"{node_name.replace('_', ' ').title()}", type="tool", parent_id=progress_msg.id)
                     step.output = detail
                     await step.send()
 
@@ -272,15 +273,18 @@ async def _handle_deep_research(topic: str, *, source: str = "arxiv"):
 
         # Wait for completion
         await research_task
+        logger.info("research_task thread joined")
 
         # Process any remaining events
         if len(events) > last_event_count:
             for i in range(last_event_count, len(events)):
                 node_name, state_data = events[i]
                 emoji, desc = _NODE_META.get(node_name, ("", node_name))
-                step = cl.Step(name=f"{node_name.replace('_', ' ').title()}", type="tool")
+                step = cl.Step(name=f"{node_name.replace('_', ' ').title()}", type="tool", parent_id=progress_msg.id)
                 step.output = desc
                 await step.send()
+        
+        logger.info("Processed remaining events")
 
         elapsed = time.perf_counter() - t0
 
@@ -296,9 +300,14 @@ async def _handle_deep_research(topic: str, *, source: str = "arxiv"):
             if "section_evidence" in state_data:
                 all_evidence.update(state_data["section_evidence"])
 
+        logger.info("Extracted final report and evidence")
+
         # Update progress message
-        progress_msg.content = f"[Done] Research complete in **{elapsed:.1f}s** — {len(outline)} sections processed"
+        progress_msg.output = f"Research complete in **{elapsed:.1f}s** — {len(outline)} sections processed"
+        progress_msg.status = "success"
         await progress_msg.update()
+
+        logger.info("Updated progress message")
 
         if final_report:
             # Send the final report
@@ -326,6 +335,7 @@ async def _handle_deep_research(topic: str, *, source: str = "arxiv"):
             )
 
             await cl.Message(content=report_content).send()
+            logger.info("Sent final report to client")
         else:
             await cl.Message(
                 content="[WARNING] The research pipeline completed but produced no final report. "

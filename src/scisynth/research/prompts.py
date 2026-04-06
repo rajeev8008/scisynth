@@ -53,7 +53,7 @@ def writer_prompt(
         "the raw evidence text is garbled\n"
         "- Write 2-4 substantive paragraphs with clear Markdown formatting\n"
         "- Be specific about methods, findings, and implications\n"
-        "- If evidence is insufficient, note the gap but do NOT hallucinate\n\n"
+        "- CRITICAL: If the provided evidence does NOT contain information about the specific topic requested (e.g., specific authors, frameworks, or concepts), explicitly state that you could not find the information in the gathered literature. Give a brief summary of what WAS found, but do NOT hallucinate connections or invent facts.\n\n"
         f"## Section: {section_title}\n"
         f"**Scope:** {section_description}\n\n"
         f"### Evidence:\n{evidence_text}\n\n"
@@ -82,12 +82,13 @@ def reviewer_prompt(
         '- "research_more": need more/different evidence (triggers new retrieval)\n'
         '- "rewrite": evidence is fine but draft needs improvement\n\n'
         "Criteria:\n"
-        "1. Does the draft address the section topic adequately?\n"
-        "2. Are there at least 2 references to source papers (by title, not IDs)?\n"
-        "3. Is content grounded in the evidence (no hallucination)?\n"
+        "1. Does the draft address the section topic adequately using the provided evidence?\n"
+        "2. Are there at least 2 references to source papers (by title, not IDs), UNLESS the draft correctly notes insufficient evidence?\n"
+        "3. Is the content grounded ONLY in the evidence (no hallucination or inventing details not present)?\n"
         "4. Is the writing clear and academic?\n"
         "5. Are equations properly formatted in LaTeX ($...$ or $$...$$)?\n"
-        "6. Does the text avoid raw chunk IDs, paper IDs, or arXiv identifiers?\n\n"
+        "6. Does the text avoid raw chunk IDs, paper IDs, or arXiv identifiers?\n"
+        "NOTE: If the evidence is irrelevant and the draft explicitly states this, you MUST 'accept' the draft (do NOT fail it).\n\n"
         f"Section: {section_title}\n"
         f"Scope: {section_description}\n\n"
         f"Draft:\n{draft}\n\n"
@@ -100,22 +101,20 @@ def reviewer_prompt(
 # Synthesizer
 # ---------------------------------------------------------------------------
 
-def synthesizer_prompt(topic: str, sections_text: str) -> str:
+def synthesizer_intro_outro_prompt(topic: str, sections_text: str) -> str:
     return (
         "You are a research report synthesizer.\n"
-        "Merge the following section drafts into a single cohesive research report.\n\n"
+        "I have already drafted the body sections for a research report. "
+        "Your task is ONLY to write an Introduction and a Conclusion to wrap these sections.\n\n"
         "FORMATTING RULES (follow strictly):\n"
-        "- Add a brief Introduction (2-3 sentences framing the topic)\n"
-        "- Include all section content, referencing papers by TITLE only\n"
-        "- Add a Conclusion (3-5 sentences summarising key findings and open questions)\n"
-        "- Use Markdown formatting with ## headings\n"
-        "- For equations, use LaTeX: $inline$ or $$display$$\n"
-        "- Do NOT include chunk IDs, paper IDs, arXiv identifiers, or internal codes\n"
-        "- Make smooth transitions between sections\n"
-        "- End with a References section listing paper titles mentioned\n\n"
+        "- The Introduction should be 2-3 paragraphs framing the topic and outlining the report.\n"
+        "- The Conclusion should be 2-3 paragraphs summarising key findings and open questions.\n"
+        "- Use clear Markdown formatting if needed.\n"
+        "- Do NOT use chunk IDs, paper IDs, arXiv identifiers, or internal codes.\n"
+        "- Return ONLY valid JSON with two string fields: 'introduction' and 'conclusion'.\n\n"
         f"# Research Topic: {topic}\n\n"
-        f"## Section Drafts:\n{sections_text}\n\n"
-        "## Write the complete, cohesive report:\n"
+        f"## Body Section Drafts (provided for context only):\n{sections_text}\n\n"
+        "JSON:"
     )
 
 
