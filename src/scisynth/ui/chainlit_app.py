@@ -27,15 +27,15 @@ def _format_citations_md(evidence_list: list[dict]) -> str:
     """Format evidence chunks as a markdown citation block."""
     if not evidence_list:
         return "_No evidence retrieved._"
+    seen = set()
     lines = []
     for c in evidence_list[:10]:
-        cid = c.get("chunk_id", "?")
-        title = c.get("paper_title") or c.get("paper_id", "unknown")
-        score = c.get("score", 0.0)
+        title = c.get("paper_title") or "Unknown Paper"
+        if title in seen:
+            continue
+        seen.add(title)
         snippet = c.get("text", "")[:120].replace("\n", " ")
-        clean_id = str(cid).strip()
-        clean_title = str(title).strip()
-        lines.append(f"- **[{clean_id}]** *{clean_title}* · score {score:.2f}\n  <br/> _{snippet}..._")
+        lines.append(f"- *{title}*\n  <br/> _{snippet}..._")
     return "\n".join(lines)
 
 
@@ -43,13 +43,18 @@ def _format_quick_answer(result) -> str:
     """Format an AnswerResult into rich markdown."""
     parts = [f"## Answer\n\n{result.answer}\n"]
     if result.citations:
-        parts.append("\n---\n### Citations\n")
+        # Deduplicate by paper title for a cleaner references section
+        seen_titles = set()
+        ref_lines = []
         for c in result.citations:
-            clean_id = str(c.chunk_id).strip()
-            clean_title = str(c.paper_title or c.paper_id).strip()
-            parts.append(
-                f"- **[{clean_id}]** *{clean_title}* · score {c.score:.2f}\n  <br/> _{c.snippet}_"
-            )
+            title = str(c.paper_title or "").strip()
+            if not title or title in seen_titles:
+                continue
+            seen_titles.add(title)
+            ref_lines.append(f"- *{title}*")
+        if ref_lines:
+            parts.append("\n---\n### Sources\n")
+            parts.extend(ref_lines)
     parts.append(
         f"\n---\n*Model: `{result.model}` · Retrieval hops: {result.retrieval_hops_used}*"
     )
