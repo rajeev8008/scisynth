@@ -6,7 +6,7 @@ It operates in two primary modes:
 1. **Quick Q&A (Single-Agent):** You ask a question, it retrieves evidence from an ingested corpus or arXiv, and an LLM generates a cited answer.
 2. **Deep Research (Multi-Agent):** You provide a topic. A team of collaborative AI agents (Planner, Researcher, Writer, Reviewer, Synthesizer) plan an outline, fetch live papers from arXiv (or use ingested data), draft sections, review for quality, and synthesize a cohesive final report.
 
-## 🚀 Features
+##  Features
 
 - **Multi-Agent Orchestration (LangGraph):** Cyclic workflows with feedback loops ensuring high-quality, grounded research.
 - **Live arXiv Discovery:** The Deep Research mode can fetch real papers from arXiv on-the-fly. No pre-ingestion required!
@@ -15,7 +15,7 @@ It operates in two primary modes:
 - **Modern Chat UI:** Built with Chainlit, offering real-time progress tracking for background agent tasks.
 - **Strict Citation Tracking:** Every claim is backed by a specific chunk ID and paper title.
 
-## 🛠️ Setup
+##  Setup
 
 Python 3.11+ recommended.
 
@@ -39,7 +39,7 @@ Required `.env` variables for agent functionality:
 - `LLM_API_KEY`
 - `LLM_MODEL` (e.g., `llama-3.1-8b-instant`)
 
-## 🖥️ Running the UI
+##  Running the UI
 
 Start the Chainlit web interface:
 
@@ -57,7 +57,7 @@ Type directly in the chat box:
 - **`/arxiv 2005.11401 How does RAG work?`**: Fetches the specified arXiv paper, reads it, and answers your question.
 - **`/discover What are recent advances in RAG?`**: Searches arXiv, summarizes the top 5 papers, and answers.
 
-## 🧠 System Architecture
+##  System Architecture
 
 The core innovation is the **Deep Research LangGraph Pipeline**:
 
@@ -67,7 +67,7 @@ The core innovation is the **Deep Research LangGraph Pipeline**:
 4. **Reviewer Node:** Critiques the draft. If citations are missing or it hallucinates, it routes back to the Researcher (for more data) or Writer (for a rewrite).
 5. **Synthesizer Node:** Stitches accepted sections into a final markdown report.
 
-## 🗄️ Ingestion Pipeline (Optional)
+##  Ingestion Pipeline (Optional)
 
 If you want to query your own local documents or a specific HuggingFace dataset, you can build a local index.
 
@@ -79,8 +79,7 @@ scisynth ingest
 
 Data is written to `data/processed/<DATASET_ID>/` as `chunks.jsonl` and `documents.jsonl`.
 
-## 🧪 Evaluation
-
+##  Evaluation
 Run the frozen benchmarking suite:
 
 ```bash
@@ -88,7 +87,7 @@ scisynth eval
 ```
 Outputs a CSV report in `eval/results/` tracking keyword coverage, retrieval hops, and citation formatting.
 
-## 📁 Layout
+##  Layout
 
 | Area | Role |
 |------|------|
@@ -98,6 +97,6 @@ Outputs a CSV report in `eval/results/` tracking keyword coverage, retrieval hop
 | `src/scisynth/ingestion/` | PDF extraction, chunking, downloading from arXiv/HF |
 | `src/scisynth/ui/` | Chainlit web interface |
 
-## 📜 License
+##  License
 
 MIT License
