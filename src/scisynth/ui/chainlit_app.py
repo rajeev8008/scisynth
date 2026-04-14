@@ -80,10 +80,8 @@ async def on_start():
             "| Command | What it does |\n"
             "|---------|-------------|\n"
             "| Just type a question | **Quick Q&A** — retrieve + answer with citations |\n"
-            "| `/research <topic>` | **Deep Research (arXiv)** — fetches live papers from arXiv |\n"
-            "| `/research-index <topic>` | **Deep Research (Index)** — uses ingested papers only |\n"
-            "| `/arxiv <url> <question>` | **arXiv Q&A** — answer from a specific paper |\n"
-            "| `/discover <question>` | **arXiv Discovery** — search + answer from arXiv |\n\n"
+            "| `/research <topic>` | **Deep Research** — multi-agent report using live arXiv papers |\n"
+            "| `/arxiv <url_or_id> <question>` | **Single-Paper Q&A** — deep answer from one arXiv paper |\n\n"
             "---\n"
             "*Try: `/research How do transformer models improve scientific document QA?`*"
         ),
@@ -99,16 +97,18 @@ async def on_message(message: cl.Message):
         return
 
     # Route based on command prefix
-    if text.lower().startswith("/research-index "):
-        topic = text[len("/research-index "):].strip()
-        await _handle_deep_research(topic, source="index")
-    elif text.lower().startswith("/research "):
+    if text.lower().startswith("/research "):
         topic = text[len("/research "):].strip()
         await _handle_deep_research(topic, source="arxiv")
     elif text.lower().startswith("/arxiv "):
         await _handle_arxiv(text[len("/arxiv "):].strip())
-    elif text.lower().startswith("/discover "):
-        await _handle_discovery(text[len("/discover "):].strip())
+    elif text.lower().startswith("/research-index ") or text.lower().startswith("/discover "):
+        await cl.Message(
+            content=(
+                "This UI is now simplified to 3 reliable modes: normal chat, `/research`, and `/arxiv`.\n\n"
+                "Use `/research <topic>` for deep multi-paper research."
+            )
+        ).send()
     else:
         await _handle_quick_qa(text)
 
@@ -205,7 +205,7 @@ async def _handle_deep_research(topic: str, *, source: str = "arxiv"):
             f"## Deep Research: *{topic}*\n\n"
             f"**Evidence source:** {source_label}\n\n"
             "Starting multi-agent pipeline...\n\n"
-            "Agents: **Planner** → **Researcher** → **Writer** → **Reviewer** ↺ → **Synthesizer**"
+            "Supervisor flow: **Planner** → **Researcher** → **Writer** → **Reviewer** ↺ → **Synthesizer**"
         ),
     )
     await header_msg.send()

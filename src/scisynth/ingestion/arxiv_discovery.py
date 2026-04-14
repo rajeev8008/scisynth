@@ -6,6 +6,7 @@ import re
 import arxiv
 
 from scisynth.config import Settings
+from scisynth.ingestion.arxiv_cache import arxiv_document_cache
 from scisynth.ingestion.arxiv_loader import _map_result_to_document
 from scisynth.ingestion.arxiv_single import enrich_paper_with_pdf_text
 from scisynth.ingestion.schema import PaperDocument
@@ -32,10 +33,16 @@ def search_arxiv_papers(settings: Settings, query: str) -> list[PaperDocument]:
     for result in client.results(search):
         doc = _map_result_to_document(result, settings.arxiv_discovery_topic)
         if settings.arxiv_discovery_use_full_pdf:
+            cache_key = f"{doc.paper_id}:discovery:fullpdf"
+            cached = arxiv_document_cache.get(cache_key)
+            if cached is not None:
+                docs.append(cached)
+                continue
             try:
                 doc = enrich_paper_with_pdf_text(doc, settings)
+                arxiv_document_cache.put(cache_key, doc)
             except Exception as exc:
                 logger.warning("PDF fetch failed for %s: %s", doc.paper_id, exc)
         docs.append(doc)
-    docs.sort(key=lambda d: d.paper_id)
+    # Keep API relevance order from arXiv instead of sorting by id.
     return docs

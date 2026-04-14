@@ -46,11 +46,12 @@ def answer_question_with_arxiv(
         )
     titles = {doc.paper_id: doc.title}
     retriever = InMemoryBM25Retriever(chunks, titles)
+    effective_top_k = top_k if top_k is not None else max(settings.answer_top_k, 10)
     return answer_question(
         question,
         settings=settings,
         retriever=retriever,
-        top_k=top_k,
+        top_k=effective_top_k,
         temperature=temperature,
     )
 
@@ -97,11 +98,12 @@ def answer_question_with_arxiv_discovery(
             retrieval_hops_used=1,
         )
     retriever = InMemoryBM25Retriever(chunks, titles)
+    effective_top_k = top_k if top_k is not None else max(settings.answer_top_k, 8)
     return answer_question(
         question,
         settings=settings,
         retriever=retriever,
-        top_k=top_k,
+        top_k=effective_top_k,
         temperature=temperature,
     )
 

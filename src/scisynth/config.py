@@ -193,13 +193,13 @@ class Settings(BaseSettings):
         description="If mean chunk score is below this, trigger hop 2.",
     )
     research_max_sections: int = Field(
-        default=5,
+        default=3,
         ge=2,
         le=8,
         description="Maximum sections the planner can create for deep research.",
     )
     research_max_review_iterations: int = Field(
-        default=2,
+        default=1,
         ge=1,
         le=5,
         description="Max reviewer loop iterations per section before force-accept.",

@@ -58,7 +58,7 @@ def _retrieve_from_index(queries: list[str], settings) -> list[RetrievedChunk]:
 
 
 def _retrieve_from_arxiv(queries: list[str], settings) -> list[RetrievedChunk]:
-    """Search arXiv for each query, download PDFs, chunk, and retrieve."""
+    """Search arXiv for section queries, dedupe papers, then retrieve once."""
     from scisynth.ingestion.arxiv_discovery import search_arxiv_papers
     from scisynth.ingestion.schema import ChunkRecord
     from scisynth.ingestion.transform import chunk_documents
@@ -66,12 +66,18 @@ def _retrieve_from_arxiv(queries: list[str], settings) -> list[RetrievedChunk]:
 
     all_chunks: list[RetrievedChunk] = []
     top_k = settings.answer_top_k
+    normalized_queries = [q.strip() for q in queries if q.strip()]
+    if not normalized_queries:
+        return []
 
-    for query in queries:
-        if not query.strip():
-            continue
+    # Cap fan-out to keep deep research responsive.
+    selected_queries = normalized_queries[:2]
+    dedup_docs: dict[str, object] = {}
+    titles: dict[str, str] = {}
+
+    for query in selected_queries:
         try:
-            docs = search_arxiv_papers(settings, query.strip())
+            docs = search_arxiv_papers(settings, query)
         except Exception as exc:
             logger.warning("arXiv search failed for query %r: %s", query[:60], exc)
             continue
@@ -80,22 +86,25 @@ def _retrieve_from_arxiv(queries: list[str], settings) -> list[RetrievedChunk]:
             logger.info("No arXiv results for query: %s", query[:60])
             continue
 
-        # Chunk all fetched papers
-        chunks: list[ChunkRecord] = []
-        titles: dict[str, str] = {}
         for doc in docs:
+            dedup_docs[doc.paper_id] = doc
             titles[doc.paper_id] = doc.title
-            chunks.extend(
-                chunk_documents([doc], settings.chunk_size, settings.chunk_overlap),
-            )
 
-        if not chunks:
-            continue
+    if not dedup_docs:
+        return []
 
-        # Build ephemeral BM25 index and retrieve
-        retriever = InMemoryBM25Retriever(chunks, titles)
-        results = retriever.retrieve(query.strip(), top_k=top_k)
-        all_chunks.extend(results)
+    # Chunk once over unique papers and reuse for all query retrieval passes.
+    chunks: list[ChunkRecord] = chunk_documents(
+        list(dedup_docs.values()),
+        settings.chunk_size,
+        settings.chunk_overlap,
+    )
+    if not chunks:
+        return []
+
+    retriever = InMemoryBM25Retriever(chunks, titles)
+    for query in selected_queries:
+        all_chunks.extend(retriever.retrieve(query, top_k=top_k))
 
     return all_chunks
 
