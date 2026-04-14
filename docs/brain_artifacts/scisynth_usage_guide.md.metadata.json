@@ -1,5 +1,0 @@
-{
-  "artifactType":  "ARTIFACT_TYPE_WALKTHROUGH",
-  "summary":  "Complete usage guide for all 5 SciSynth interaction modes:\n1. Quick Q&A — direct question to ingested index\n2. Deep Research (arXiv) — multi-agent pipeline fetching live papers\n3. Deep Research (Index) — multi-agent pipeline on ingested corpus\n4. arXiv Single Paper Q&A — question about one specific paper\n5. arXiv Discovery — search arXiv and answer from top results\n\nEach mode includes exact input syntax, example inputs to copy-paste, expected output format, timing estimates, and tips. Includes a quick reference table and recommended first demo command.",
-  "updatedAt":  "2026-04-04T04:37:06.509244100Z"
-}

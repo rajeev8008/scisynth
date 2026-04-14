@@ -1,5 +1,0 @@
-{
-  "artifactType":  "ARTIFACT_TYPE_WALKTHROUGH",
-  "summary":  "Complete technical documentation of the SciSynth project covering:\n- Project overview and what makes it unique (multi-hop RAG + multi-agent deep research)\n- Full folder structure with every file explained\n- 6 subsystem deep-dives: Ingestion, Retrieval, Agent (Q&A), Research (multi-agent), API, and UI\n- System architecture diagram showing data flow\n- LangGraph topology diagram showing the cyclic multi-agent workflow\n- Technology stack breakdown\n- Full end-to-end example workflow tracing a /research query through every component from user input to final report output",
-  "updatedAt":  "2026-04-04T04:42:43.982980300Z"
-}
