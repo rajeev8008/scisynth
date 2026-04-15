@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from collections import Counter
 
 import chainlit as cl
 
@@ -21,6 +22,41 @@ _NODE_META = {
     "advance_section": ("Next Section", "Moving to the next section..."),
     "synthesizer": ("Synthesizing", "Merging sections into a cohesive report..."),
 }
+
+
+def _sanitize_report_markdown(report: str) -> str:
+    """Normalize report markdown to avoid duplicated top-level headings."""
+    text = (report or "").strip()
+    if not text:
+        return text
+    lines = text.splitlines()
+    while lines and not lines[0].strip():
+        lines.pop(0)
+    if lines and lines[0].lstrip().startswith("# "):
+        # UI already provides the report title; keep body content only.
+        lines.pop(0)
+        while lines and not lines[0].strip():
+            lines.pop(0)
+    return "\n".join(lines).strip()
+
+
+def _build_progress_summary_table(step_counts: Counter[str], outline_count: int, elapsed: float) -> str:
+    """Create a compact markdown table with per-node execution counts."""
+    rows = []
+    ordered_nodes = ["planner", "researcher", "writer", "reviewer", "advance_section", "synthesizer"]
+    for node in ordered_nodes:
+        if node in step_counts:
+            rows.append(f"| {node.replace('_', ' ').title()} | {step_counts[node]} |")
+    if not rows:
+        rows.append("| Pipeline | 0 |")
+    return (
+        "## Run Summary\n\n"
+        "| Stage | Runs |\n"
+        "|---|---:|\n"
+        + "\n".join(rows)
+        + f"\n\n- Sections processed: **{outline_count}**\n"
+        + f"- Total time: **{elapsed:.1f}s**"
+    )
 
 
 def _format_citations_md(evidence_list: list[dict]) -> str:
@@ -200,15 +236,16 @@ async def _handle_deep_research(topic: str, *, source: str = "arxiv"):
     t0 = time.perf_counter()
 
     source_label = "arXiv (live papers)" if source == "arxiv" else "Ingested Index"
-    header_msg = cl.Message(
+    progress_msg = cl.Message(
         content=(
             f"## Deep Research: *{topic}*\n\n"
             f"**Evidence source:** {source_label}\n\n"
             "Starting multi-agent pipeline...\n\n"
-            "Supervisor flow: **Planner** → **Researcher** → **Writer** → **Reviewer** ↺ → **Synthesizer**"
+            "Supervisor flow: **Planner** -> **Researcher** -> **Writer** -> **Reviewer** -> **Synthesizer**\n\n"
+            "**Status:** Initializing..."
         ),
     )
-    await header_msg.send()
+    await progress_msg.send()
 
     try:
         from scisynth.research.graph import stream_research
@@ -226,13 +263,10 @@ async def _handle_deep_research(topic: str, *, source: str = "arxiv"):
             ):
                 events.append((node_name, state_update))
 
-        # Progress tracking
-        progress_msg = cl.Step(name="Deep Research Progress", type="run")
-        progress_msg.output = "Working..."
-        await progress_msg.send()
-
         # Run the graph in a background thread
         last_event_count = 0
+        step_counts: Counter[str] = Counter()
+        latest_detail = "Initializing..."
         research_task = loop.run_in_executor(None, _run_sync)
 
         # Poll for progress while graph runs
@@ -241,7 +275,8 @@ async def _handle_deep_research(topic: str, *, source: str = "arxiv"):
             if len(events) > last_event_count:
                 for i in range(last_event_count, len(events)):
                     node_name, state_data = events[i]
-                    emoji, desc = _NODE_META.get(node_name, ("", node_name))
+                    _label, desc = _NODE_META.get(node_name, (node_name, node_name))
+                    step_counts[node_name] += 1
 
                     # Build progress detail
                     detail = desc
@@ -264,12 +299,19 @@ async def _handle_deep_research(topic: str, *, source: str = "arxiv"):
                     elif node_name == "advance_section":
                         new_idx = state_data.get("current_section_idx", 0)
                         detail = f"Moving to section {new_idx + 1}"
+                    elif node_name == "synthesizer":
+                        detail = "Finalizing report from reviewed sections"
 
-                    step = cl.Step(name=f"{node_name.replace('_', ' ').title()}", type="tool", parent_id=progress_msg.id)
-                    step.output = detail
-                    await step.send()
+                    latest_detail = f"{node_name.replace('_', ' ').title()}: {detail}"
 
                 last_event_count = len(events)
+                progress_msg.content = (
+                    f"## Deep Research: *{topic}*\n\n"
+                    f"**Evidence source:** {source_label}\n\n"
+                    f"**Status:** {latest_detail}\n\n"
+                    f"Events processed: **{len(events)}**"
+                )
+                await progress_msg.update()
 
         # Wait for completion
         await research_task
@@ -279,10 +321,9 @@ async def _handle_deep_research(topic: str, *, source: str = "arxiv"):
         if len(events) > last_event_count:
             for i in range(last_event_count, len(events)):
                 node_name, state_data = events[i]
-                emoji, desc = _NODE_META.get(node_name, ("", node_name))
-                step = cl.Step(name=f"{node_name.replace('_', ' ').title()}", type="tool", parent_id=progress_msg.id)
-                step.output = desc
-                await step.send()
+                _label, desc = _NODE_META.get(node_name, (node_name, node_name))
+                step_counts[node_name] += 1
+                latest_detail = f"{node_name.replace('_', ' ').title()}: {desc}"
         
         logger.info("Processed remaining events")
 
@@ -302,18 +343,27 @@ async def _handle_deep_research(topic: str, *, source: str = "arxiv"):
 
         logger.info("Extracted final report and evidence")
 
-        # Update progress message
-        progress_msg.output = f"Research complete in **{elapsed:.1f}s** — {len(outline)} sections processed"
-        progress_msg.status = "success"
+        # Final status update before report output
+        progress_msg.content = (
+            f"## Deep Research: *{topic}*\n\n"
+            f"**Evidence source:** {source_label}\n\n"
+            f"**Status:** Complete\n\n"
+            f"Research complete in **{elapsed:.1f}s** — {len(outline)} sections processed"
+        )
         await progress_msg.update()
 
         logger.info("Updated progress message")
 
         if final_report:
+            cleaned_report = _sanitize_report_markdown(final_report)
+            summary_table = _build_progress_summary_table(step_counts, len(outline), elapsed)
+
             # Send the final report
             report_content = (
                 f"# Research Report: *{topic}*\n\n"
-                f"{final_report}\n\n"
+                f"{summary_table}\n\n"
+                "---\n\n"
+                f"{cleaned_report}\n\n"
                 "---\n\n"
             )
 
