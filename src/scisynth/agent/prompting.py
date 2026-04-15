@@ -20,29 +20,20 @@ def build_answer_prompt(
     Returns:
         Prompt string for a chat completion model.
     """
-    context = _format_context(chunks)
-    hop_note = ""
-    if retrieval_hops_used >= 2:
-        hop_note = (
-            "Note: Context was gathered with two retrieval passes for broader coverage.\n"
-        )
+    formatted_chunks = _format_context(chunks)
     return (
-        "You are a scientific research assistant. "
-        "Answer the question using ONLY the provided context passages.\n\n"
-        "FORMATTING RULES (follow strictly):\n"
-        "- Write in clear, readable prose. Do NOT include chunk IDs, paper IDs, "
-        "arXiv identifiers (like 1706.03762v7), or any internal reference codes in your answer.\n"
-        "- When referencing a paper, mention it by its TITLE in natural language "
-        "(e.g., 'as described in the paper \"Attention Is All You Need\"').\n"
-        "- For mathematical equations, use LaTeX notation wrapped in dollar signs: "
-        "$inline$ for inline math, $$block$$ for display equations. "
-        "Reconstruct equations properly from the context even if the raw text is garbled.\n"
-        "- Use Markdown formatting: headings (##), bold, bullet points, and numbered lists for clarity.\n"
-        "- If the context is insufficient, say so clearly.\n"
-        f"{hop_note}\n"
-        f"**Question:**\n{question}\n\n"
-        f"**Context Passages:**\n{context}\n\n"
-        "**Answer:**"
+        "You are an expert scientific research assistant. Your task is to answer the user's question based strictly on the provided Context from a specific academic paper.\n\n"
+        "CRITICAL INSTRUCTIONS:\n"
+        "1. You MUST formulate your answer using ONLY the facts, data, and claims present in the Context below.\n"
+        "2. DO NOT use your pre-existing knowledge or external facts, even if you know them to be true.\n"
+        '3. If the provided Context does not contain sufficient information to answer the question, you must explicitly output exactly this sentence: "The retrieved sections of this paper do not contain enough information to answer your question."\n'
+        "4. Write in clean, reader-friendly Markdown with short headings/bullets where useful.\n"
+        "5. For equations, use proper LaTeX only: inline `$...$` and display `$$...$$`.\n"
+        "6. Do NOT use square-bracket math blocks like `[ ... ]`.\n"
+        "7. Do NOT mention passage numbers, chunk IDs, or labels like 'Passage 3'.\n"
+        "8. If you cite support, reference it naturally (e.g., 'the paper states...'), not by passage labels.\n\n"
+        f"Context:\n{formatted_chunks}\n\n"
+        f"User Question: {question}"
     )
 
 

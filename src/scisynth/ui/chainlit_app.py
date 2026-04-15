@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import time
 from collections import Counter
 
@@ -22,6 +23,11 @@ _NODE_META = {
     "advance_section": ("Next Section", "Moving to the next section..."),
     "synthesizer": ("Synthesizing", "Merging sections into a cohesive report..."),
 }
+
+
+def _assistant_message(content: str) -> cl.Message:
+    """Create a consistently-authored assistant message."""
+    return cl.Message(content=content, author="SciSynth")
 
 
 def _sanitize_report_markdown(report: str) -> str:
@@ -75,9 +81,41 @@ def _format_citations_md(evidence_list: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def _sanitize_answer_markdown(answer: str) -> str:
+    """Normalize model output into readable markdown/math for UI rendering."""
+    text = (answer or "").strip()
+    if not text:
+        return text
+
+    # Convert bracket-style display math to markdown display math.
+    text = re.sub(
+        r"(?m)^\[\s*\n?(.*?)\n?\s*\]$",
+        lambda m: f"$$\n{m.group(1).strip()}\n$$",
+        text,
+        flags=re.DOTALL,
+    )
+
+    # Convert LaTeX-style \( ... \) and \[ ... \] delimiters.
+    text = re.sub(r"\\\((.+?)\\\)", lambda m: f"${m.group(1).strip()}$", text, flags=re.DOTALL)
+    text = re.sub(r"\\\[(.+?)\\\]", lambda m: f"$$\n{m.group(1).strip()}\n$$", text, flags=re.DOTALL)
+
+    # Remove noisy in-text passage references.
+    text = re.sub(r"\(Passage\s*[\d\u202f ]+\)", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"\bsee Passage\s*[\d\u202f ]+\b", "", text, flags=re.IGNORECASE)
+
+    # Common malformed artifacts from generation/OCR-like text.
+    text = text.replace(",,", ",").replace("!\\big", "\\big").replace("!\\Big", "\\Big")
+    text = text.replace("!\\bigl", "\\bigl").replace("!!", "!")
+    text = text.replace(";=;", "=")
+    text = re.sub(r"[ \t]+\n", "\n", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
 def _format_quick_answer(result) -> str:
     """Format an AnswerResult into rich markdown."""
-    parts = [f"## Answer\n\n{result.answer}\n"]
+    clean_answer = _sanitize_answer_markdown(result.answer)
+    parts = [f"## Answer\n\n{clean_answer}\n"]
     if result.citations:
         # Deduplicate by paper title for a cleaner references section
         seen_titles = set()
@@ -106,7 +144,7 @@ async def on_start():
     key = (settings.llm_api_key or settings.openai_api_key).strip()
     status = "[Connected]" if key else "[No API key]"
 
-    await cl.Message(
+    await _assistant_message(
         content=(
             "# Welcome to SciSynth\n\n"
             "**Multi-Agent Research Assistant** — powered by LangGraph + RAG\n\n"
@@ -139,7 +177,7 @@ async def on_message(message: cl.Message):
     elif text.lower().startswith("/arxiv "):
         await _handle_arxiv(text[len("/arxiv "):].strip())
     elif text.lower().startswith("/research-index ") or text.lower().startswith("/discover "):
-        await cl.Message(
+        await _assistant_message(
             content=(
                 "This UI is now simplified to 3 reliable modes: normal chat, `/research`, and `/arxiv`.\n\n"
                 "Use `/research <topic>` for deep multi-paper research."
@@ -154,7 +192,7 @@ async def on_message(message: cl.Message):
 async def _handle_quick_qa(question: str):
     """Run the existing single-question RAG pipeline."""
     settings = get_settings()
-    msg = cl.Message(content="Retrieving evidence and generating answer...")
+    msg = _assistant_message(content="Retrieving evidence and generating answer...")
     await msg.send()
 
     try:
@@ -179,12 +217,12 @@ async def _handle_arxiv(text: str):
     """Answer from a single arXiv paper."""
     parts = text.split(maxsplit=1)
     if len(parts) < 2:
-        await cl.Message(content="Usage: `/arxiv <url_or_id> <question>`").send()
+        await _assistant_message(content="Usage: `/arxiv <url_or_id> <question>`").send()
         return
 
     arxiv_ref, question = parts[0], parts[1]
     settings = get_settings()
-    msg = cl.Message(content=f"Fetching arXiv paper `{arxiv_ref}` and answering...")
+    msg = _assistant_message(content=f"Fetching arXiv paper `{arxiv_ref}` and answering...")
     await msg.send()
 
     try:
@@ -209,7 +247,7 @@ async def _handle_arxiv(text: str):
 async def _handle_discovery(question: str):
     """Search arXiv and answer from top results."""
     settings = get_settings()
-    msg = cl.Message(content="Searching arXiv and generating answer...")
+    msg = _assistant_message(content="Searching arXiv and generating answer...")
     await msg.send()
 
     try:
@@ -236,7 +274,7 @@ async def _handle_deep_research(topic: str, *, source: str = "arxiv"):
     t0 = time.perf_counter()
 
     source_label = "arXiv (live papers)" if source == "arxiv" else "Ingested Index"
-    progress_msg = cl.Message(
+    progress_msg = _assistant_message(
         content=(
             f"## Deep Research: *{topic}*\n\n"
             f"**Evidence source:** {source_label}\n\n"
@@ -384,17 +422,18 @@ async def _handle_deep_research(topic: str, *, source: str = "arxiv"):
                 f"{len(outline)} sections*"
             )
 
-            await cl.Message(content=report_content).send()
+            markdown_text = _sanitize_answer_markdown(report_content)
+            await cl.Message(content=markdown_text, author="SciSynth").send()
             logger.info("Sent final report to client")
         else:
-            await cl.Message(
+            await _assistant_message(
                 content="[WARNING] The research pipeline completed but produced no final report. "
                 "Check that your LLM API key is configured correctly."
             ).send()
 
     except ImportError as exc:
         logger.exception("Research module not available")
-        await cl.Message(
+        await _assistant_message(
             content=(
                 "### [ERROR] Deep Research not available\n\n"
                 f"Missing dependency: `{exc.name}`\n\n"
@@ -404,7 +443,7 @@ async def _handle_deep_research(topic: str, *, source: str = "arxiv"):
     except Exception as exc:
         logger.exception("Deep research failed")
         elapsed = time.perf_counter() - t0
-        await cl.Message(
+        await _assistant_message(
             content=f"### [ERROR] Research Failed\n\n`{exc!s}`\n\n*Elapsed: {elapsed:.1f}s*"
         ).send()
 

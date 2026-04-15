@@ -77,6 +77,22 @@ def reviewer_node(state: ResearchState) -> dict:
             },
         }
 
+    if draft.strip() == "INSUFFICIENT_EVIDENCE":
+        logger.info(
+            "Reviewer: section %d flagged insufficient evidence; requesting new search",
+            idx,
+        )
+        return {
+            "section_reviews": {
+                str(idx): {
+                    "passed": False,
+                    "feedback": "The previous search yielded irrelevant papers. The Writer found insufficient evidence. You MUST generate completely different search keywords for this section.",
+                    "action": "research_more",
+                },
+            },
+            "iteration_count": iteration_count + 1,
+        }
+
     evidence_text = format_evidence_for_prompt(evidence)
     prompt = reviewer_prompt(
         section_title=section["title"],

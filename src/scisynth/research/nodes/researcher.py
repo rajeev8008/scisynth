@@ -13,7 +13,9 @@ from __future__ import annotations
 import logging
 
 from scisynth.agent.multihop import build_hop2_query, evidence_insufficient, merge_chunk_lists
+from scisynth.agent.llm_client import generate_answer_text
 from scisynth.config import get_settings
+from scisynth.research.prompts import researcher_search_prompt
 from scisynth.research.state import ResearchState
 from scisynth.retrieval.contract import RetrievedChunk
 
@@ -62,7 +64,7 @@ def _retrieve_from_arxiv(queries: list[str], settings) -> list[RetrievedChunk]:
     from scisynth.ingestion.arxiv_discovery import search_arxiv_papers
     from scisynth.ingestion.schema import ChunkRecord
     from scisynth.ingestion.transform import chunk_documents
-    from scisynth.retrieval.memory_bm25 import InMemoryBM25Retriever
+    from scisynth.retrieval.memory_semantic import InMemorySemanticRetriever
 
     all_chunks: list[RetrievedChunk] = []
     top_k = settings.answer_top_k
@@ -102,11 +104,45 @@ def _retrieve_from_arxiv(queries: list[str], settings) -> list[RetrievedChunk]:
     if not chunks:
         return []
 
-    retriever = InMemoryBM25Retriever(chunks, titles)
+    retriever = InMemorySemanticRetriever(chunks, titles)
     for query in selected_queries:
         all_chunks.extend(retriever.retrieve(query, top_k=top_k))
 
     return all_chunks
+
+
+def _generate_arxiv_query(
+    topic: str,
+    section_title: str,
+    feedback: str,
+    settings,
+) -> str:
+    """Generate a section-specific arXiv API query from the current outline section."""
+    prompt = researcher_search_prompt(
+        topic=topic,
+        current_section=section_title,
+        feedback=feedback,
+    )
+    try:
+        generated = generate_answer_text(
+            settings,
+            prompt,
+            temperature=0.0,
+            max_output_tokens=80,
+        ).strip()
+    except Exception as exc:
+        logger.warning(
+            "Researcher: query generation failed for section %r: %s",
+            section_title[:60],
+            exc,
+        )
+        return ""
+
+    # Keep only the first line and strip wrappers to get a clean API query.
+    line = generated.splitlines()[0].strip().strip("`").strip().strip('"').strip("'")
+    if line.lower().startswith("arxiv query:"):
+        line = line.split(":", 1)[1].strip()
+    return line
 
 
 def researcher_node(state: ResearchState) -> dict:
@@ -124,9 +160,10 @@ def researcher_node(state: ResearchState) -> dict:
         return {}
 
     section = outline[idx]
-    queries = section.get("queries", [section.get("title", "")])
+    section_title = section.get("title", state["topic"])
+    queries = section.get("queries", [section_title])
     if not queries:
-        queries = [section.get("title", state["topic"])]
+        queries = [section_title]
 
     # If the reviewer sent us back with feedback, augment queries with it
     review = state.get("section_reviews", {}).get(str(idx), {})
@@ -142,8 +179,15 @@ def researcher_node(state: ResearchState) -> dict:
     if source == "index":
         all_chunks = _retrieve_from_index(queries, settings)
     else:
+        dynamic_query = _generate_arxiv_query(
+            state["topic"],
+            section_title,
+            reviewer_feedback,
+            settings,
+        )
+        arxiv_queries = [dynamic_query] if dynamic_query else queries
         # Default: arXiv discovery (works without ingested data)
-        all_chunks = _retrieve_from_arxiv(queries, settings)
+        all_chunks = _retrieve_from_arxiv(arxiv_queries, settings)
         # If arXiv returns nothing, fall back to index
         if not all_chunks:
             logger.info("arXiv returned no results, falling back to index")
