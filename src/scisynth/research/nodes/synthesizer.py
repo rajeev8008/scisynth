@@ -14,6 +14,23 @@ from scisynth.research.state import ResearchState
 logger = logging.getLogger(__name__)
 
 
+def _strip_leading_heading(text: str, title: str) -> str:
+    """Remove duplicated section headings when writer already emitted one."""
+    if not text:
+        return text
+    cleaned = text.lstrip()
+    title_pattern = re.escape(title.strip())
+    patterns = [
+        rf"^#+\s*{title_pattern}\s*\n+",
+        rf"^\*\*{title_pattern}\*\*\s*\n+",
+    ]
+    for pattern in patterns:
+        cleaned_next = re.sub(pattern, "", cleaned, flags=re.IGNORECASE)
+        if cleaned_next != cleaned:
+            cleaned = cleaned_next.lstrip()
+    return cleaned
+
+
 def _parse_intro_outro_json(text: str) -> dict:
     """Parse the synthesizer's JSON response with fallbacks."""
     text = re.sub(r"```(?:json)?\s*", "", text).strip().rstrip("`")
@@ -69,6 +86,7 @@ def synthesizer_node(state: ResearchState) -> dict:
     for i, section in enumerate(outline):
         title = section.get("title", f"Section {i + 1}")
         draft = drafts.get(str(i), "_No draft generated for this section._")
+        draft = _strip_leading_heading(draft, title)
         parts.append(f"## {title}\n\n{draft}")
 
     sections_text = "\n\n---\n\n".join(parts)

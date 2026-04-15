@@ -51,6 +51,7 @@ def writer_prompt(
         "- For mathematical equations, use LaTeX notation: $inline$ for inline, "
         "$$block$$ for display equations. Reconstruct equations properly even if "
         "the raw evidence text is garbled\n"
+        "- Prefer structured Markdown over plain prose when useful: include at least one table if comparing methods, datasets, metrics, or findings\n"
         "- Write 2-4 substantive paragraphs with clear Markdown formatting\n"
         "- Be specific about methods, findings, and implications\n"
         "- CRITICAL: If the provided evidence does NOT contain information about the specific topic requested (e.g., specific authors, frameworks, or concepts), explicitly state that you could not find the information in the gathered literature. Give a brief summary of what WAS found, but do NOT hallucinate connections or invent facts.\n\n"
