@@ -32,6 +32,8 @@ def build_answer_prompt(
         "6. Do NOT use square-bracket math blocks like `[ ... ]`.\n"
         "7. Do NOT mention passage numbers, chunk IDs, or labels like 'Passage 3'.\n"
         "8. If you cite support, reference it naturally (e.g., 'the paper states...'), not by passage labels.\n\n"
+        "9. If the user asks for an algorithm/procedure/steps, reproduce the complete numbered steps from context in a fenced code block before any explanation.\n"
+        "10. Do not summarize or omit steps when an explicit full algorithm listing is requested.\n\n"
         f"Context:\n{formatted_chunks}\n\n"
         f"User Question: {question}"
     )

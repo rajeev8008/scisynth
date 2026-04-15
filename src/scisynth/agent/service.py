@@ -46,7 +46,8 @@ def answer_question_with_arxiv(
         )
     titles = {doc.paper_id: doc.title}
     retriever = InMemoryBM25Retriever(chunks, titles)
-    effective_top_k = top_k if top_k is not None else max(settings.answer_top_k, 10)
+    # Single-paper algorithm/procedure questions benefit from wider recall.
+    effective_top_k = top_k if top_k is not None else max(settings.answer_top_k, 16)
     return answer_question(
         question,
         settings=settings,
@@ -98,7 +99,7 @@ def answer_question_with_arxiv_discovery(
             retrieval_hops_used=1,
         )
     retriever = InMemoryBM25Retriever(chunks, titles)
-    effective_top_k = top_k if top_k is not None else max(settings.answer_top_k, 8)
+    effective_top_k = top_k if top_k is not None else max(settings.answer_top_k, 12)
     return answer_question(
         question,
         settings=settings,
